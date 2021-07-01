@@ -1,8 +1,11 @@
-package az.zero.todolist
+package az.zero.todolist.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import az.zero.todolist.R
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

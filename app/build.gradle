@@ -4,16 +4,17 @@ plugins {
     id 'kotlin-kapt'
     id 'dagger.hilt.android.plugin'
     id 'androidx.navigation.safeargs.kotlin'
+    id 'kotlin-parcelize'
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion rootProject.compileSdkVersion
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "az.zero.todolist"
-        minSdkVersion 21
-        targetSdkVersion 30
+        minSdkVersion rootProject.minSdkVersion
+        targetSdkVersion rootProject.targetSdkVersion
         versionCode 1
         versionName "1.0"
 
@@ -57,7 +58,7 @@ dependencies {
     // Lifecycle + ViewModel & LiveData
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycleVersion"
-    implementation "android.arch.lifecycle:common-java8:$lifecycleVersion"
+//    implementation "android.arch.lifecycle:common-java8:$lifecycleVersion"
 
     // Navigation Component
     implementation "androidx.navigation:navigation-fragment-ktx:$navigationVersion"
