@@ -19,9 +19,8 @@ abstract class TaskDatabase : RoomDatabase() {
          * be instantiated (created) and the database needs the
          * the callback to be instantiated
          *
-         * here we will execute this onCreate after the database
-         * has been instantiated and it will be only called the
-         * first time the app is launched
+         * This onCreate is called only the first time the app is launched
+         * and after the database has been instantiated
          * @author Omar Adel
          */
         private val database: Provider<TaskDatabase>,
@@ -32,11 +31,17 @@ abstract class TaskDatabase : RoomDatabase() {
 
             val dao = database.get().taskDao()
             applicationScope.launch {
-                dao.insert(Task("1"))
-                dao.insert(Task("2"))
-                dao.insert(Task("3 and completed", completed = true, important = true))
-                dao.insert(Task("4 and completed", completed = true))
-                dao.insert(Task("5", important = true))
+//                dao.insert(Task("Hi my name is omar"))
+//                dao.insert(Task("This is a fake data to be displayed"))
+//                dao.insert(Task("Hey! it's me again omar", completed = true, important = true))
+//                dao.insert(Task("4 and completed", completed = true))
+//                dao.insert(Task("Mmmmm list just say Hi", important = true))
+
+                dao.insert(Task("C", completed = true, important = true))
+                dao.insert(Task("D", completed = true))
+                dao.insert(Task("E", important = true))
+                dao.insert(Task("B"))
+                dao.insert(Task("A"))
             }
         }
     }

@@ -1,12 +1,17 @@
 package az.zero.todolist.ui.tasks
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
+import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import az.zero.todolist.R
 import az.zero.todolist.databinding.FragmentTasksBinding
+import az.zero.todolist.util.onQueryTextChanged
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -28,6 +33,44 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
 
         viewModel.task.observe(viewLifecycleOwner) { tasks ->
             taskAdapter.submitList(tasks)
+        }
+
+        setHasOptionsMenu(true)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_fragment_tasks, menu)
+
+        val searchItem = menu.findItem(R.id.action_search)
+        val searchView = searchItem.actionView as SearchView
+
+        searchView.onQueryTextChanged { text ->
+            viewModel.searchQuery.value = text
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_sort_name -> {
+                viewModel.sortOrder.value = SortOrder.BY_NAME
+                true
+            }
+
+            R.id.action_sort_data_created -> {
+                viewModel.sortOrder.value = SortOrder.BY_DATE
+                true
+            }
+
+            R.id.action_hide_completed_tasks -> {
+                item.isChecked = !item.isChecked
+                viewModel.hideCompleted.value = item.isChecked
+                true
+            }
+
+            R.id.action_delete_all_completed_tasks -> {
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 }
