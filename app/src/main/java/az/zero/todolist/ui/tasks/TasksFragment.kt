@@ -8,11 +8,15 @@ import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import az.zero.todolist.R
+import az.zero.todolist.data.SortOrder
 import az.zero.todolist.databinding.FragmentTasksBinding
 import az.zero.todolist.util.onQueryTextChanged
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class TasksFragment : Fragment(R.layout.fragment_tasks) {
@@ -47,23 +51,33 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
         searchView.onQueryTextChanged { text ->
             viewModel.searchQuery.value = text
         }
+
+        // read hideCompleted from DataStore based on the user last selection (default false)
+        viewLifecycleOwner.lifecycleScope.launch {
+            /* we don't want to get update when ever hideCompleted changes
+            *  we just need what was saved in DataStore when the app launches
+            *  so we only collect the first value
+            */
+            menu.findItem(R.id.action_hide_completed_tasks).isChecked =
+                viewModel.preferencesFlow.first().hideCompleted
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_sort_name -> {
-                viewModel.sortOrder.value = SortOrder.BY_NAME
+                viewModel.onSortOrderSelected(SortOrder.BY_NAME)
                 true
             }
 
             R.id.action_sort_data_created -> {
-                viewModel.sortOrder.value = SortOrder.BY_DATE
+                viewModel.onSortOrderSelected(SortOrder.BY_DATE)
                 true
             }
 
             R.id.action_hide_completed_tasks -> {
                 item.isChecked = !item.isChecked
-                viewModel.hideCompleted.value = item.isChecked
+                viewModel.onHideCompletedSelected(item.isChecked)
                 true
             }
 
