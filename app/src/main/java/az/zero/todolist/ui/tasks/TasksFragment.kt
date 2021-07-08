@@ -32,6 +32,9 @@ import kotlinx.coroutines.launch
 class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItemClickListener {
     private val viewModel: TasksViewModel by viewModels()
 
+    private lateinit var searchView: SearchView
+
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -44,7 +47,6 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
             fabAddTask.setOnClickListener {
                 viewModel.onAddNewTaskClick()
             }
-
         }
 
         setFragmentResultListener(ADD_EDIT_REQUEST) { _, bundle ->
@@ -119,6 +121,11 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
                     is TasksViewModel.TaskEvent.ShowTaskSavedConfirmationMessage -> {
                         Snackbar.make(requireView(), event.message, Snackbar.LENGTH_SHORT).show()
                     }
+                    is TasksViewModel.TaskEvent.NavigateToDeleteAllCompletedScreen -> {
+                        val action =
+                            TasksFragmentDirections.actionGlobalDeleteAllCompletedDialogFragment()
+                        findNavController().navigate(action)
+                    }
                 }.exhaustive
             }
         }
@@ -136,7 +143,14 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
         inflater.inflate(R.menu.menu_fragment_tasks, menu)
 
         val searchItem = menu.findItem(R.id.action_search)
-        val searchView = searchItem.actionView as SearchView
+        searchView = searchItem.actionView as SearchView
+
+        // restores query after process death
+        val pendingQuery = viewModel.searchQuery.value
+        if (pendingQuery != null && pendingQuery.isNotEmpty()) {
+            searchItem.expandActionView()
+            searchView.setQuery(pendingQuery, false)
+        }
 
         searchView.onQueryTextChanged { text ->
             viewModel.searchQuery.value = text
@@ -172,6 +186,7 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
             }
 
             R.id.action_delete_all_completed_tasks -> {
+                viewModel.onDeleteAllCompletedClick()
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -184,5 +199,15 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
 
     override fun onTaskCheckBoxClick(task: Task, isChecked: Boolean) {
         viewModel.onTaskCheckedChanged(task, isChecked)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        /*
+            the search view sends empty string when it is destroy and updates the value in
+            the viewModel so we need to pass null to deactivate this strange default query
+            and also it saves the query when navigating to other fragment
+        */
+        searchView.setOnQueryTextListener(null)
     }
 }
