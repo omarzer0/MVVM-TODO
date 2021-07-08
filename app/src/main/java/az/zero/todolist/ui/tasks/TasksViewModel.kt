@@ -5,12 +5,15 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import az.zero.todolist.data.PreferencesManger
 import az.zero.todolist.data.SortOrder
+import az.zero.todolist.data.Task
 import az.zero.todolist.data.TaskDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,6 +23,12 @@ class TasksViewModel @Inject constructor(
     private val preferencesManger: PreferencesManger
 ) : ViewModel() {
     val searchQuery = MutableStateFlow("")
+
+    private val taskEventChannel = Channel<TaskEvent>()
+
+    /** expose private channel [taskEventChannel] to consumer (ex: fragment)
+     * as a flow to be collected*/
+    val taskEvent = taskEventChannel.receiveAsFlow()
 
     /** gets the stored data in [PreferencesManger.preferencesFlow] */
     val preferencesFlow = preferencesManger.preferencesFlow
@@ -47,4 +56,24 @@ class TasksViewModel @Inject constructor(
         preferencesManger.updateHideCompleted(hideCompleted)
     }
 
+    fun onTaskSelected(task: Task) {
+
+    }
+
+    fun onTaskCheckedChanged(task: Task, checked: Boolean) = viewModelScope.launch {
+        taskDao.update(task.copy(completed = checked))
+    }
+
+    fun onTaskSwiped(task: Task) = viewModelScope.launch {
+        taskDao.delete(task)
+        taskEventChannel.send(TaskEvent.ShowUndoDeleteTaskMessage(task))
+    }
+
+    fun onUndoDeleteClick(task: Task) = viewModelScope.launch {
+        taskDao.insert(task)
+    }
+
+    sealed class TaskEvent {
+        data class ShowUndoDeleteTaskMessage(val task: Task) : TaskEvent()
+    }
 }
