@@ -7,8 +7,10 @@ import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,6 +18,9 @@ import az.zero.todolist.R
 import az.zero.todolist.data.SortOrder
 import az.zero.todolist.data.Task
 import az.zero.todolist.databinding.FragmentTasksBinding
+import az.zero.todolist.util.ADD_EDIT_REQUEST
+import az.zero.todolist.util.ADD_EDIT_RESULT
+import az.zero.todolist.util.exhaustive
 import az.zero.todolist.util.onQueryTextChanged
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,36 +38,60 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
         val binding = FragmentTasksBinding.bind(view)
         val taskAdapter = TasksAdapter(this)
         binding.apply {
-            recyclerViewTasks.apply {
-                adapter = taskAdapter
-                layoutManager = LinearLayoutManager(requireContext())
-                setHasFixedSize(true)
+            setUpRecyclerView(taskAdapter)
+            addItemTouchHelperToRecyclerView(taskAdapter)
+
+            fabAddTask.setOnClickListener {
+                viewModel.onAddNewTaskClick()
             }
 
-            ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-                0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
-            ) {
-                override fun onMove(
-                    recyclerView: RecyclerView,
-                    viewHolder: RecyclerView.ViewHolder,
-                    target: RecyclerView.ViewHolder
-                ): Boolean {
-                    return false
-                }
-
-                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                    val task = taskAdapter.currentList[viewHolder.adapterPosition]
-                    viewModel.onTaskSwiped(task)
-                }
-            }).attachToRecyclerView(recyclerViewTasks)
         }
 
+        setFragmentResultListener(ADD_EDIT_REQUEST) { _, bundle ->
+            val result = bundle.getInt(ADD_EDIT_RESULT)
+            viewModel.onAddEditResult(result)
+        }
+
+        observeAndSubmitListsToRecyclerView(taskAdapter)
+
+        setHasOptionsMenu(true)
+        collectTaskEventShowUndoDeleteTaskMessage()
+    }
+
+    private fun FragmentTasksBinding.setUpRecyclerView(taskAdapter: TasksAdapter) {
+        recyclerViewTasks.apply {
+            adapter = taskAdapter
+            layoutManager = LinearLayoutManager(requireContext())
+            setHasFixedSize(true)
+        }
+    }
+
+    private fun FragmentTasksBinding.addItemTouchHelperToRecyclerView(taskAdapter: TasksAdapter) {
+        ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val task = taskAdapter.currentList[viewHolder.adapterPosition]
+                viewModel.onTaskSwiped(task)
+            }
+        }).attachToRecyclerView(recyclerViewTasks)
+    }
+
+    private fun observeAndSubmitListsToRecyclerView(taskAdapter: TasksAdapter) {
         viewModel.task.observe(viewLifecycleOwner) { tasks ->
             taskAdapter.submitList(tasks)
         }
+    }
 
-        setHasOptionsMenu(true)
-
+    private fun collectTaskEventShowUndoDeleteTaskMessage() {
         /*
         cancels the observer when onPause is called and listen when onStart is called
         for example if the fragment is in the background we don't want to show snackBar
@@ -72,15 +101,35 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.OnTaskItem
             viewModel.taskEvent.collect { event ->
                 when (event) {
                     is TasksViewModel.TaskEvent.ShowUndoDeleteTaskMessage -> {
-                        Snackbar.make(
-                            requireView(), "Task deleted", Snackbar.LENGTH_LONG
-                        ).setAction("Undo") {
-                            viewModel.onUndoDeleteClick(event.task)
-                        }.show()
+                        makeSnackBar(event)
                     }
-                }
+                    is TasksViewModel.TaskEvent.NavigateToAddTaskScreen -> {
+                        val action =
+                            TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(title = "New Task")
+                        findNavController().navigate(action)
+                    }
+                    is TasksViewModel.TaskEvent.NavigateToEditTaskScreen -> {
+                        val action =
+                            TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(
+                                event.task,
+                                "Edit Task"
+                            )
+                        findNavController().navigate(action)
+                    }
+                    is TasksViewModel.TaskEvent.ShowTaskSavedConfirmationMessage -> {
+                        Snackbar.make(requireView(), event.message, Snackbar.LENGTH_SHORT).show()
+                    }
+                }.exhaustive
             }
         }
+    }
+
+    private fun makeSnackBar(event: TasksViewModel.TaskEvent.ShowUndoDeleteTaskMessage) {
+        Snackbar.make(
+            requireView(), "Task deleted", Snackbar.LENGTH_LONG
+        ).setAction("Undo") {
+            viewModel.onUndoDeleteClick(event.task)
+        }.show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
